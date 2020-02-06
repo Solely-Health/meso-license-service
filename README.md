@@ -1,2 +1,2 @@
 #meso-license-service
-licence verfication
+licence verfication service
