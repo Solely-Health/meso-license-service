@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
-	"strconv"
+	// "strconv"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -37,7 +37,7 @@ func createDcaPost() {
 
 	//Hardcoded an example nurse. Change when passing in user input
 	//payload := strings.NewReader("boardCode=0&licenseType=0&firstName=RUBY&lastName=ABRANTES&licenseNumber=633681")
-	payload := strings.NewReader("boardCode=0&licenseType=0&firstName=RUBY&lastName=ABRANTES")
+	payload := strings.NewReader("boardCode=0&licenseType=224&firstName=RUBY&lastName=ABRANTES&licenseNumber=633681")
 
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, payload)
@@ -91,22 +91,43 @@ func collectText(n *html.Node, buf *bytes.Buffer) *bytes.Buffer {
 
 func verifyCollectedText(s string) {
 	//hardcoded we would need to change this for user specific data
-	name := "ABRANTES, RUBY"
+	name := "ABRANTES, RUBY" 
 	number := "633681"
 	licenseType := "Registered Nurse"
 
-	expression := name + "+\\s+License Number:+\\s+" + number + "+\\s+License Type:+\\s+" + licenseType + "+\\s+License Status: Current"
+	expression := name + "+\\s+License Number:+\\s+" + number + "+\\s+License Type:+\\s+" + licenseType 
+	// "+\\s+License Status: Current"
 	//expression says return true if FirstName LastName + License Name and Type + License Status == Current.
 
 	var validID = regexp.MustCompile(expression)
-	fmt.Println("Match Result: " + name + " " + number + " " + licenseType + ": " + strconv.FormatBool(validID.MatchString(s)))
+
+	match := validID.MatchString(s)
+
+	if match == true {
+		expression := "License Status: Current"
+		var verifyStatus = regexp.MustCompile(expression)
+		if verifyStatus.MatchString(s){
+			//return true
+			fmt.Printf("True")
+		}else {
+			//return false
+			fmt.Printf("False")
+		}
+	} else {
+		//return false
+		fmt.Printf("False")
+	}
+
+
+	//fmt.Println("Match Result: " + name + " " + number + " " + licenseType + ": " + strconv.FormatBool(validID.MatchString(s)))
+
 }
 
 func main() {
 	fmt.Printf("Started Service\n")
 	//manually doing a post. for testing
 	createDcaPost()
-
+ 
 	//handler not setup
 	router := mux.NewRouter()
 	router.HandleFunc("/license", licenseRequest)
