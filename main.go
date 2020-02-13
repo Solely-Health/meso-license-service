@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+
 	// "strconv"
 	"strings"
 
@@ -17,22 +18,24 @@ import (
 
 type LicenseType struct {
 	boardCode   string
-	name string 
+	name        string
 	licenseCode string
 }
 
 type Status struct {
-	current  bool 
-	delinquent bool 
-	deceased bool
+	current            bool
+	delinquent         bool
+	deceased           bool
 	voluntarySurrender bool
 }
 type License struct {
-	number      int
-	licenseType LicenseType
-	status Status 
-	expiration string 
-	description string
+	firstname       string
+	lastname        string
+	number          int
+	licenseType     LicenseType
+	status          Status
+	expiration      string
+	description     string
 	secondaryStatus string
 }
 
@@ -42,11 +45,13 @@ func licenseRequest(w http.ResponseWriter, r *http.Request) {
 
 	//TODO take user input and format it in x-www-form-urlencoded
 	//pass into dcaPost
-	createDcaPost()
+	var newLicense *License
+	newLicense = new(License)
+	createDcaPost(newLicense)
 }
 
 //post to department of consumer affairs website
-func createDcaPost() {
+func createDcaPost(license *License) {
 	url := "https://search.dca.ca.gov/results"
 	method := "POST"
 
@@ -69,27 +74,32 @@ func createDcaPost() {
 
 	//takes string of html. parses to nodes. (basically makes a tree of tags)
 	parseMe, err := html.Parse(strings.NewReader(string(body)))
-	htmlNodeTraversal(parseMe)
+	htmlNodeTraversal(parseMe, license)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
 //Finds tag we need and collects into text
-func htmlNodeTraversal(n *html.Node) {
+func htmlNodeTraversal(n *html.Node, license *License) {
+	resultFound := false
 	if n.Type == html.ElementNode && n.Data == "ul" {
 		for _, a := range n.Attr {
 			if a.Key == "class" && a.Val == "actions" {
+				resultFound = true
 				text := &bytes.Buffer{}
 				collectionBuffer := collectText(n, text)
 				collectedText := collectionBuffer.String()
 				//fmt.Printf(collectedText)
-				verifyCollectedText(collectedText)
+				verifyCollectedText(collectedText, license)
 			}
 		}
 	}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		htmlNodeTraversal(c)
+		htmlNodeTraversal(c, license)
+	}
+	if resultFound == false {
+		verifyCollectedText("empty", license)
 	}
 }
 
@@ -104,45 +114,62 @@ func collectText(n *html.Node, buf *bytes.Buffer) *bytes.Buffer {
 	return buf
 }
 
-func verifyCollectedText(s string) {
+func verifyCollectedText(s string, license *License) {
 	//hardcoded we would need to change this for user specific data
-	name := "ABRANTES, RUBY" 
+	name := "ABRANTES, RUBY"
 	number := "633681"
 	licenseType := "Registered Nurse"
-
-	expression := name + "+\\s+License Number:+\\s+" + number + "+\\s+License Type:+\\s+" + licenseType 
+	matchExpression := name + "+\\s+License Number:+\\s+" + number + "+\\s+License Type:+\\s+" + licenseType
 	// "+\\s+License Status: Current"
 	//expression says return true if FirstName LastName + License Name and Type + License Status == Current.
-
-	var validID = regexp.MustCompile(expression)
-
-	match := validID.MatchString(s)
-
+	match := expressionToRegex(matchExpression).MatchString(s)
 	if match == true {
-		expression := "License Status: Current"
-		var verifyStatus = regexp.MustCompile(expression)
-		if verifyStatus.MatchString(s){
-			//return true
-			fmt.Printf("True")
-		}else {
-			//return false
-			fmt.Printf("False")
+		currentExpression := "License Status: Current"
+		delinquentExpression := "License Status: Delinquent"
+		voluntaryExpression := "License Status: Voluntary Surrender"
+		deceasedExpression := "License Status: Deceased"
+		if expressionToRegex(currentExpression).MatchString(s) {
+			license.status.current = true
+			fillLicenseObject(s, license)
+		} else if expressionToRegex(delinquentExpression).MatchString(s) {
+			license.status.delinquent = true
+			fillLicenseObject(s, license)
+		} else if expressionToRegex(voluntaryExpression).MatchString(s) {
+			license.status.voluntarySurrender = true
+			fillLicenseObject(s, license)
+		} else if expressionToRegex(deceasedExpression).MatchString(s) {
+			license.status.deceased = true
+			fillLicenseObject(s, license)
 		}
 	} else {
-		//return false
-		fmt.Printf("False")
+		fillLicenseObject(s, license)
+		fmt.Printf("False!")
 	}
-
-
 	//fmt.Println("Match Result: " + name + " " + number + " " + licenseType + ": " + strconv.FormatBool(validID.MatchString(s)))
+}
 
+//Helper function for creating regex expressions
+func expressionToRegex(expression string) *regexp.Regexp {
+	var regex = regexp.MustCompile(expression)
+	return regex
+}
+
+func fillLicenseObject(s string, license *License) *License {
+	//set status of license sent from verifyCollectedText()
+	if license.status.current == true {
+		fmt.Printf("current set")
+		return license
+	}
+	return license
 }
 
 func main() {
 	fmt.Printf("Started Service\n")
 	//manually doing a post. for testing
-	createDcaPost()
- 
+	var license *License
+	license = new(License)
+	createDcaPost(license)
+
 	//handler not setup
 	router := mux.NewRouter()
 	router.HandleFunc("/license", licenseRequest)
