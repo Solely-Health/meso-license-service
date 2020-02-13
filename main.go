@@ -15,10 +15,25 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type LicenseType struct {
+	boardCode   string
+	name string 
+	licenseCode string
+}
+
+type Status struct {
+	current  bool 
+	delinquent bool 
+	deceased bool
+	voluntarySurrender bool
+}
 type License struct {
 	number      int
-	licenseType string
-	boardCode   string
+	licenseType LicenseType
+	status Status 
+	expiration string 
+	description string
+	secondaryStatus string
 }
 
 func licenseRequest(w http.ResponseWriter, r *http.Request) {
