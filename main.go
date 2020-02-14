@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 
 	// "strconv"
 	"strings"
@@ -37,6 +38,7 @@ type License struct {
 	expiration      string
 	description     string
 	secondaryStatus string
+	verify          bool
 }
 
 func licenseRequest(w http.ResponseWriter, r *http.Request) {
@@ -82,24 +84,19 @@ func createDcaPost(license *License) {
 
 //Finds tag we need and collects into text
 func htmlNodeTraversal(n *html.Node, license *License) {
-	resultFound := false
 	if n.Type == html.ElementNode && n.Data == "ul" {
 		for _, a := range n.Attr {
 			if a.Key == "class" && a.Val == "actions" {
-				resultFound = true
 				text := &bytes.Buffer{}
 				collectionBuffer := collectText(n, text)
 				collectedText := collectionBuffer.String()
-				//fmt.Printf(collectedText)
+				//	fmt.Printf(collectedText)
 				verifyCollectedText(collectedText, license)
 			}
 		}
 	}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		htmlNodeTraversal(c, license)
-	}
-	if resultFound == false {
-		verifyCollectedText("empty", license)
 	}
 }
 
@@ -144,6 +141,7 @@ func verifyCollectedText(s string, license *License) {
 	} else {
 		fillLicenseObject(s, license)
 		fmt.Printf("False!")
+		fmt.Printf(s)
 	}
 	//fmt.Println("Match Result: " + name + " " + number + " " + licenseType + ": " + strconv.FormatBool(validID.MatchString(s)))
 }
@@ -154,13 +152,19 @@ func expressionToRegex(expression string) *regexp.Regexp {
 	return regex
 }
 
-func fillLicenseObject(s string, license *License) *License {
+func fillLicenseObject(s string, license *License) {
 	//set status of license sent from verifyCollectedText()
+	license.verify = true
 	if license.status.current == true {
-		fmt.Printf("current set")
-		return license
+		license.expiration = expirationDate(s)
+		fmt.Printf("Expiration set to" + license.expiration + "\n")
 	}
-	return license
+}
+
+func expirationDate(s string) string {
+	expression := "\\w+\\s\\d{2},\\s\\d{4}"
+	index := expressionToRegex(expression).FindStringSubmatch(s)
+	return index[0]
 }
 
 func main() {
@@ -169,6 +173,7 @@ func main() {
 	var license *License
 	license = new(License)
 	createDcaPost(license)
+	fmt.Printf(strconv.FormatBool(license.status.current))
 
 	//handler not setup
 	router := mux.NewRouter()
