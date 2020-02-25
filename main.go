@@ -2,76 +2,85 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"regexp"
 	"strconv"
-
-	// "strconv"
 	"strings"
 
-	"golang.org/x/net/html"
-
 	"github.com/gorilla/mux"
+	"golang.org/x/net/html"
 )
 
 type LicenseType struct {
-	boardCode   string
-	name        string
-	licenseCode string
+	BoardCode   int    `json:"boardCode"`
+	Name        string `json:"licenseName"`
+	LicenseCode int    `json:"licenseCode"`
 }
 
-type Status struct {
-	current            bool
-	delinquent         bool
-	deceased           bool
-	voluntarySurrender bool
-}
 type License struct {
-	firstname       string
-	lastname        string
-	number          int
-	licenseType     LicenseType
-	status          Status
-	expiration      string
-	description     string
-	secondaryStatus string
-	verify          bool
+	FirstName       string      `json:"firstName"`
+	LastName        string      `json:"lastName"`
+	Number          int         `json:"licenseNumber"`
+	LicenseDesc     LicenseType `json:"licenseType"`
+	Status          string
+	Expiration      string
+	Description     string
+	SecondaryStatus string
+	Verify          bool
 }
 
 func licenseRequest(w http.ResponseWriter, r *http.Request) {
-	//for testing with docker
-	fmt.Printf("got the request")
+	fmt.Println("got the request")
 
-	//TODO take user input and format it in x-www-form-urlencoded
-	//pass into dcaPost
-	var newLicense *License
-	newLicense = new(License)
-	createDcaPost(newLicense)
+	body, err := ioutil.ReadAll(r.Body)
+	defer r.Body.Close()
+	if err != nil {
+		fmt.Fprintf(w, "It broke")
+	}
+	//fmt.Println(body)
+	var newLicense License
+	if err := json.Unmarshal(body, &newLicense); err != nil {
+		log.Println(err)
+	}
+	fmt.Println("printing License object")
+	fmt.Println(newLicense)
+	createDcaPost(&newLicense)
 }
 
 //post to department of consumer affairs website
 func createDcaPost(license *License) {
+	//Hardcoded payload example.
+	//payload := strings.NewReader("boardCode=0&licenseType=224&firstName=RUBY&lastName=ABRANTES&licenseNumber=633681")
+
 	url := "https://search.dca.ca.gov/results"
 	method := "POST"
+	board := strconv.Itoa(license.LicenseDesc.BoardCode)
+	licenseCode := strconv.Itoa(license.LicenseDesc.LicenseCode)
+	licenseNumber := strconv.Itoa(license.Number)
+	firstName := license.FirstName
+	lastName := license.LastName
 
-	//Hardcoded an example nurse. Change when passing in user input
-	//payload := strings.NewReader("boardCode=0&licenseType=0&firstName=RUBY&lastName=ABRANTES&licenseNumber=633681")
-	payload := strings.NewReader("boardCode=0&licenseType=224&firstName=RUBY&lastName=ABRANTES&licenseNumber=633681")
+	//create payload for POST
+	payload := strings.NewReader("boardCode=" + board + "&licenseType=" + licenseCode + "&firstName=" + firstName + "&lastName=" + lastName + "&licenseNumber=" + licenseNumber)
 
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, payload)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	res, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+	}
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	//takes string of html. parses to nodes. (basically makes a tree of tags)
@@ -90,7 +99,7 @@ func htmlNodeTraversal(n *html.Node, license *License) {
 				text := &bytes.Buffer{}
 				collectionBuffer := collectText(n, text)
 				collectedText := collectionBuffer.String()
-				//	fmt.Printf(collectedText)
+				//fmt.Printf(collectedText)
 				verifyCollectedText(collectedText, license)
 			}
 		}
@@ -112,38 +121,38 @@ func collectText(n *html.Node, buf *bytes.Buffer) *bytes.Buffer {
 }
 
 func verifyCollectedText(s string, license *License) {
-	//hardcoded we would need to change this for user specific data
-	name := "ABRANTES, RUBY"
-	number := "633681"
-	licenseType := "Registered Nurse"
+	//we would need to pass this for user specific data
+	/*
+		name := "ABRANTES, RUBY"
+		number := "633681"
+		licenseType := "Registered Nurse"
+	*/
+
+	//Format Name: join first and last. then make them uppercase
+	name := strings.ToUpper(license.LastName + ", " + license.FirstName)
+	number := strconv.Itoa(license.Number)
+	licenseType := license.LicenseDesc.Name
+
 	matchExpression := name + "+\\s+License Number:+\\s+" + number + "+\\s+License Type:+\\s+" + licenseType
 	// "+\\s+License Status: Current"
 	//expression says return true if FirstName LastName + License Name and Type + License Status == Current.
 	match := expressionToRegex(matchExpression).MatchString(s)
 	if match == true {
-		currentExpression := "License Status: Current"
-		delinquentExpression := "License Status: Delinquent"
-		voluntaryExpression := "License Status: Voluntary Surrender"
-		deceasedExpression := "License Status: Deceased"
-		if expressionToRegex(currentExpression).MatchString(s) {
-			license.status.current = true
-			fillLicenseObject(s, license)
-		} else if expressionToRegex(delinquentExpression).MatchString(s) {
-			license.status.delinquent = true
-			fillLicenseObject(s, license)
-		} else if expressionToRegex(voluntaryExpression).MatchString(s) {
-			license.status.voluntarySurrender = true
-			fillLicenseObject(s, license)
-		} else if expressionToRegex(deceasedExpression).MatchString(s) {
-			license.status.deceased = true
+		newExpression := "[\n\r].*License Status:\\s*([^\n\r]*)"
+		//returns string array [0] being "License Status: whateverstatus"
+		result := expressionToRegex(newExpression).FindAllString(s, 1)
+		if result == nil {
+			fmt.Print("we broke")
+		} else {
+			extractedResult := strings.Split(result[0], ":")
+			license.Status = extractedResult[len(extractedResult)-1]
 			fillLicenseObject(s, license)
 		}
 	} else {
 		fillLicenseObject(s, license)
-		fmt.Printf("False!")
-		fmt.Printf(s)
+		fmt.Printf("False! no match")
+		//fmt.Printf(s)
 	}
-	//fmt.Println("Match Result: " + name + " " + number + " " + licenseType + ": " + strconv.FormatBool(validID.MatchString(s)))
 }
 
 //Helper function for creating regex expressions
@@ -154,11 +163,9 @@ func expressionToRegex(expression string) *regexp.Regexp {
 
 func fillLicenseObject(s string, license *License) {
 	//set status of license sent from verifyCollectedText()
-	license.verify = true
-	if license.status.current == true {
-		license.expiration = expirationDate(s)
-		fmt.Printf("Expiration set to" + license.expiration + "\n")
-	}
+	license.Verify = true
+	fmt.Println("made it to fill function")
+	fmt.Println(license)
 }
 
 func expirationDate(s string) string {
@@ -170,13 +177,18 @@ func expirationDate(s string) string {
 func main() {
 	fmt.Printf("Started Service\n")
 	//manually doing a post. for testing
-	var license *License
-	license = new(License)
-	createDcaPost(license)
-	fmt.Printf(strconv.FormatBool(license.status.current))
+	/*
+		var license *License
+		license = new(License)
+		createDcaPost(license)
+		fmt.Println(license.status)
+	*/
 
-	//handler not setup
 	router := mux.NewRouter()
 	router.HandleFunc("/license", licenseRequest)
+
+	//for local testing
+	log.Fatal(http.ListenAndServe("localhost:8080", router))
+
 	//log.Fatal(http.ListenAndServe(":8080", router))
 }
