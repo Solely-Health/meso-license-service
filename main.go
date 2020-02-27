@@ -54,7 +54,6 @@ func licenseRequest(w http.ResponseWriter, r *http.Request) {
 
 //post to department of consumer affairs website
 func createDcaPost(license *License) {
-	//Hardcoded payload example.
 	//payload := strings.NewReader("boardCode=0&licenseType=224&firstName=RUBY&lastName=ABRANTES&licenseNumber=633681")
 
 	url := "https://search.dca.ca.gov/results"
@@ -152,7 +151,7 @@ func verifyCollectedText(s string, license *License) {
 			extractedResult := strings.Split(result[0], ":")
 			license.Status = extractedResult[len(extractedResult)-1]
 			license.Expiration = expirationDate(s)
-			log.Println("Verified license" + strconv.Itoa(license.Number))
+			log.Println("Verified license: " + strconv.Itoa(license.Number))
 		}
 	} else {
 		license.Verify = false
