@@ -34,21 +34,19 @@ type License struct {
 }
 
 func licenseRequest(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("got the request")
-
 	body, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
-		fmt.Fprintf(w, "It broke")
+		fmt.Fprintf(w, "Error reading body")
 	}
-	//fmt.Println(body)
+
 	var newLicense License
 	if err := json.Unmarshal(body, &newLicense); err != nil {
 		log.Println(err)
 	}
-	fmt.Println("printing License object")
-	fmt.Println(newLicense)
 	createDcaPost(&newLicense)
+
+	//return struct back as json
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(newLicense)
@@ -73,16 +71,19 @@ func createDcaPost(license *License) {
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, payload)
 	if err != nil {
+		log.Print("createDcaPost reading request:")
 		log.Println(err)
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	res, err := client.Do(req)
 	if err != nil {
+		log.Print("createDcaPost:")
 		log.Println(err)
 	}
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
+		log.Print("createDcaPost:")
 		log.Println(err)
 	}
 
@@ -102,7 +103,6 @@ func htmlNodeTraversal(n *html.Node, license *License) {
 				text := &bytes.Buffer{}
 				collectionBuffer := collectText(n, text)
 				collectedText := collectionBuffer.String()
-				//fmt.Printf(collectedText)
 				verifyCollectedText(collectedText, license)
 			}
 		}
@@ -126,7 +126,7 @@ func collectText(n *html.Node, buf *bytes.Buffer) *bytes.Buffer {
 func verifyCollectedText(s string, license *License) {
 	//we would need to pass this for user specific data
 	/*
-		name := "ABRANTES, RUBY"
+		name := "LASTNAME, FIRSTNAME"
 		number := "633681"
 		licenseType := "Registered Nurse"
 	*/
@@ -137,25 +137,26 @@ func verifyCollectedText(s string, license *License) {
 	licenseType := license.LicenseDesc.Name
 
 	matchExpression := name + "+\\s+License Number:+\\s+" + number + "+\\s+License Type:+\\s+" + licenseType
-	// "+\\s+License Status: Current"
-	//expression says return true if FirstName LastName + License Name and Type + License Status == Current.
+	//expression: return true if string matches FirstName LastName + License Name and Type + License Status
+
 	match := expressionToRegex(matchExpression).MatchString(s)
 	if match == true {
 		newExpression := "[\n\r].*License Status:\\s*([^\n\r]*)"
 		//returns string array [0] being "License Status: whateverstatus"
+
 		result := expressionToRegex(newExpression).FindAllString(s, 1)
 		if result == nil {
-			fmt.Print("we broke")
+			log.Printf("verifyCollectedText: regex check nil")
 		} else {
+			license.Verify = true
 			extractedResult := strings.Split(result[0], ":")
 			license.Status = extractedResult[len(extractedResult)-1]
 			license.Expiration = expirationDate(s)
-			fillLicenseObject(s, license)
+			log.Println("Verified license" + strconv.Itoa(license.Number))
 		}
 	} else {
-		fillLicenseObject(s, license)
-		fmt.Printf("False! no match")
-		//fmt.Printf(s)
+		license.Verify = false
+		log.Println("verifyCollectedText: license requested has no match")
 	}
 }
 
@@ -165,13 +166,6 @@ func expressionToRegex(expression string) *regexp.Regexp {
 	return regex
 }
 
-func fillLicenseObject(s string, license *License) {
-	//set status of license sent from verifyCollectedText()
-	license.Verify = true
-	fmt.Println("made it to fill function")
-	fmt.Println(license)
-}
-
 func expirationDate(s string) string {
 	expression := "\\w+\\s\\d{2},\\s\\d{4}"
 	index := expressionToRegex(expression).FindStringSubmatch(s)
@@ -179,20 +173,11 @@ func expirationDate(s string) string {
 }
 
 func main() {
-	fmt.Printf("Started Service\n")
-	//manually doing a post. for testing
-	/*
-		var license *License
-		license = new(License)
-		createDcaPost(license)
-		fmt.Println(license.status)
-	*/
-
+	log.Println("Started License service")
 	router := mux.NewRouter()
 	router.HandleFunc("/license", licenseRequest)
 
 	//for local testing
 	log.Fatal(http.ListenAndServe("localhost:8080", router))
-
 	//log.Fatal(http.ListenAndServe(":8080", router))
 }
