@@ -49,6 +49,9 @@ func licenseRequest(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("printing License object")
 	fmt.Println(newLicense)
 	createDcaPost(&newLicense)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(newLicense)
 }
 
 //post to department of consumer affairs website
