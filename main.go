@@ -149,6 +149,7 @@ func verifyCollectedText(s string, license *License) {
 		} else {
 			extractedResult := strings.Split(result[0], ":")
 			license.Status = extractedResult[len(extractedResult)-1]
+			license.Expiration = expirationDate(s)
 			fillLicenseObject(s, license)
 		}
 	} else {
