@@ -21,7 +21,7 @@ COPY . .
 RUN go test ./...
 
 # Build the application
-RUN go build -o main .
+RUN go build -o main ./cmd/licensesvc
 
 # Move to /dist directory as the place for resulting binary folder
 WORKDIR /dist
@@ -39,4 +39,4 @@ COPY --from=builder /dist/main /
 # Command to run the executable
 ENTRYPOINT ["/main"]
 
-EXPOSE 8080
+EXPOSE 6060

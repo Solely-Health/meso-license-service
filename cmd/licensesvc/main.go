@@ -175,8 +175,8 @@ func main() {
 	log.Println("Started License service")
 	router := mux.NewRouter()
 	router.HandleFunc("/license", licenseRequest)
+	router.HandleFunc("/ping", ping)
 
 	//for local testing
-	log.Fatal(http.ListenAndServe("localhost:8080", router))
-	//log.Fatal(http.ListenAndServe(":8080", router))
+	log.Fatal(http.ListenAndServe(":6060", router))
 }
