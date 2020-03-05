@@ -14,7 +14,7 @@ const (
 )
 
 type LicenseRepository interface {
-	Store(lic *License)
+	Store(lic *License) error
 	Find(id LicenseID) (*License, error)
 	Update(id LicenseID, status LicenseStatus) (*License, error)
 }

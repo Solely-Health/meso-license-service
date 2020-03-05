@@ -5,18 +5,19 @@ import (
 )
 
 type Service interface {
-	StoreLicense(lic repository.License)
+	StoreLicense(lic repository.License) (repository.License, error)
 }
 
 type service struct {
-	licenses repository.License
+	licenses repository.LicenseRepository
 }
 
 func (s *service) StoreLicense(lic repository.License) (repository.License, error) {
-
+	s.licenses.Store(&lic)
+	return lic, nil
 }
 
-func NewService(licenseRepository repository.License) Service {
+func NewService(licenseRepository repository.LicenseRepository) Service {
 	return &service{
 		licenses: licenseRepository,
 	}

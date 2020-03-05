@@ -13,24 +13,25 @@ import (
 
 	"github.com/gorilla/mux"
 	"golang.org/x/net/html"
+
+	"github.com/meso-org/meso-license-service/repository"
 )
 
-type LicenseType struct {
-	BoardCode   int    `json:"boardCode"`
-	Name        string `json:"licenseName"`
-	LicenseCode int    `json:"licenseCode"`
-}
+func main() {
+	var (
+		inmemorydb = true
+	)
+	var (
+		licenseRepository = repository.NewLicenseRepository()
+	)
 
-type License struct {
-	FirstName       string      `json:"firstName"`
-	LastName        string      `json:"lastName"`
-	Number          int         `json:"licenseNumber"`
-	LicenseDesc     LicenseType `json:"licenseType"`
-	Status          string
-	Expiration      string
-	Description     string
-	SecondaryStatus string
-	Verify          bool
+	log.Println("Started License service")
+	router := mux.NewRouter()
+	router.HandleFunc("/license", licenseRequest)
+	router.HandleFunc("/ping", ping)
+
+	//for local testing
+	log.Fatal(http.ListenAndServe(":6060", router))
 }
 
 func licenseRequest(w http.ResponseWriter, r *http.Request) {
@@ -44,6 +45,7 @@ func licenseRequest(w http.ResponseWriter, r *http.Request) {
 	if err := json.Unmarshal(body, &newLicense); err != nil {
 		log.Println(err)
 	}
+
 	createDcaPost(&newLicense)
 
 	//return struct back as json
@@ -169,14 +171,4 @@ func expirationDate(s string) string {
 	expression := "\\w+\\s\\d{2},\\s\\d{4}"
 	index := expressionToRegex(expression).FindStringSubmatch(s)
 	return index[0]
-}
-
-func main() {
-	log.Println("Started License service")
-	router := mux.NewRouter()
-	router.HandleFunc("/license", licenseRequest)
-	router.HandleFunc("/ping", ping)
-
-	//for local testing
-	log.Fatal(http.ListenAndServe(":6060", router))
 }
