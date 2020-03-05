@@ -14,7 +14,8 @@ import (
 	"github.com/gorilla/mux"
 	"golang.org/x/net/html"
 
-	"github.com/meso-org/meso-license-service/repository"
+	inmem "github.com/meso-org/meso-license-service/inmemorydb"
+	repo "github.com/meso-org/meso-license-service/repository"
 )
 
 func main() {
@@ -22,8 +23,14 @@ func main() {
 		inmemorydb = true
 	)
 	var (
-		licenseRepository = repository.NewLicenseRepository()
+		licenseRepository repo.LicenseRepository
 	)
+	if inmemorydb {
+		licenseRepository = inmem.NewLicenseRepository()
+	} else {
+		//other db
+	}
+	var licenseSVC repo
 
 	log.Println("Started License service")
 	router := mux.NewRouter()
