@@ -25,6 +25,7 @@ type LicenseType struct {
 	LicenseCode int    `json:"licenseCode"`
 }
 
+//TODO add licenseStatus type
 type License struct {
 	FirstName       string      `json:"firstName"`
 	LastName        string      `json:"lastName"`

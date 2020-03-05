@@ -15,6 +15,7 @@ import (
 	"golang.org/x/net/html"
 
 	inmem "github.com/meso-org/meso-license-service/inmemorydb"
+	"github.com/meso-org/meso-license-service/licenses"
 	repo "github.com/meso-org/meso-license-service/repository"
 )
 
@@ -30,7 +31,8 @@ func main() {
 	} else {
 		//other db
 	}
-	var licenseSVC repo
+	var licenseSVC licenses.Service
+	licenseSVC = licenses.NewService(licenseRepository)
 
 	log.Println("Started License service")
 	router := mux.NewRouter()
@@ -47,8 +49,6 @@ func licenseRequest(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Fprintf(w, "Error reading body")
 	}
-
-	var newLicense License
 	if err := json.Unmarshal(body, &newLicense); err != nil {
 		log.Println(err)
 	}
