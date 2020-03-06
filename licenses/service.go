@@ -6,6 +6,7 @@ import (
 
 type Service interface {
 	StoreLicense(lic repository.License) (repository.License, error)
+	UpdateLicense(lic repository.License) error
 }
 
 type service struct {
@@ -15,6 +16,16 @@ type service struct {
 func (s *service) StoreLicense(lic repository.License) (repository.License, error) {
 	s.licenses.Store(&lic)
 	return lic, nil
+}
+
+func (s *service) UpdateLicense(lic repository.License) error {
+	// ObjectL := new(repository.License)
+	// ObjectL, err:= s.licenses.Find(lic.ID)
+	// if err != nil {
+
+	// }
+	// ObjectL = &lic
+	// return nil
 }
 
 func NewService(licenseRepository repository.LicenseRepository) Service {
