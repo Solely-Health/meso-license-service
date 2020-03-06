@@ -16,8 +16,11 @@ import (
 
 	inmem "github.com/meso-org/meso-license-service/inmemorydb"
 	"github.com/meso-org/meso-license-service/licenses"
+	"github.com/meso-org/meso-license-service/repository"
 	repo "github.com/meso-org/meso-license-service/repository"
 )
+
+var licenseSVC licenses.Service
 
 func main() {
 	var (
@@ -31,13 +34,12 @@ func main() {
 	} else {
 		//other db
 	}
-	var licenseSVC licenses.Service
 	licenseSVC = licenses.NewService(licenseRepository)
 
 	log.Println("Started License service")
 	router := mux.NewRouter()
 	router.HandleFunc("/license", licenseRequest)
-	router.HandleFunc("/ping", ping)
+	//router.HandleFunc("/ping", ping)
 
 	//for local testing
 	log.Fatal(http.ListenAndServe(":6060", router))
@@ -46,13 +48,17 @@ func main() {
 func licenseRequest(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
+	var newLicense repo.License
 	if err != nil {
 		fmt.Fprintf(w, "Error reading body")
 	}
 	if err := json.Unmarshal(body, &newLicense); err != nil {
 		log.Println(err)
 	}
-
+	if licenseSVC != nil {
+		licenseSVC.StoreLicense(newLicense)
+		log.Println(newLicense)
+	}
 	createDcaPost(&newLicense)
 
 	//return struct back as json
@@ -62,7 +68,7 @@ func licenseRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 //post to department of consumer affairs website
-func createDcaPost(license *License) {
+func createDcaPost(license *repository.License) {
 	//payload := strings.NewReader("boardCode=0&licenseType=224&firstName=RUBY&lastName=ABRANTES&licenseNumber=633681")
 
 	url := "https://search.dca.ca.gov/results"
@@ -104,7 +110,7 @@ func createDcaPost(license *License) {
 }
 
 //Finds tag we need and collects into text
-func htmlNodeTraversal(n *html.Node, license *License) {
+func htmlNodeTraversal(n *html.Node, license *repository.License) {
 	if n.Type == html.ElementNode && n.Data == "ul" {
 		for _, a := range n.Attr {
 			if a.Key == "class" && a.Val == "actions" {
@@ -131,7 +137,7 @@ func collectText(n *html.Node, buf *bytes.Buffer) *bytes.Buffer {
 	return buf
 }
 
-func verifyCollectedText(s string, license *License) {
+func verifyCollectedText(s string, license *repository.License) {
 	//we would need to pass this for user specific data
 	/*
 		name := "LASTNAME, FIRSTNAME"
