@@ -51,8 +51,10 @@ func licenseRequest(w http.ResponseWriter, r *http.Request) {
 	if licenseSVC != nil {
 		licenseSVC.StoreLicense(newLicense)
 		log.Println(newLicense)
+	} else {
+		log.Println("err:licenseSVC nil")
 	}
-	licenseSVC.VerifyLicense(&newLicense)
+	licenseSVC.UpdateLicense(newLicense)
 
 	//return struct back as json
 	// w.Header().Set("Content-Type", "application/json")

@@ -27,14 +27,14 @@ func (lr *licenseRepository) Find(id repository.LicenseID) (*repository.License,
 	//return nil, repository.LicenseFindError
 	return &repository.License{}, nil
 }
-func (lr *licenseRepository) Update(id repository.LicenseID, status repository.LicenseStatus) (*repository.License, error) {
+func (lr *licenseRepository) FindAll() []*repository.License {
 	lr.mtx.Lock()
 	defer lr.mtx.Lock()
 	c := make([]*repository.License, 0, len(lr.licenses))
 	for _, val := range lr.licenses {
 		c = append(c, val)
 	}
-	return &repository.License{}, nil
+	return c
 }
 
 func NewLicenseRepository() repository.LicenseRepository {

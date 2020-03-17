@@ -28,18 +28,13 @@ func (s *service) StoreLicense(lic repository.License) (repository.License, erro
 	return lic, nil
 }
 
+//updateLicense seems redundant. keeping for now
 func (s *service) UpdateLicense(lic repository.License) error {
-	// ObjectL := new(repository.License)
-	// ObjectL, err:= s.licenses.Find(lic.ID)
-	// if err != nil {
-
-	// }
-	// ObjectL = &lic
-	// return nil
+	s.licenses.Store(&lic)
 	return nil
 }
 
-func (s *service) VerfifyLicense(lic repository.License) error {
+func (s *service) VerifyLicense(lic repository.License) error {
 	createDcaPost(lic)
 	return nil
 }

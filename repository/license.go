@@ -7,6 +7,7 @@ import (
 type LicenseID string
 type LicenseStatus int
 
+//We may not use LicenseStatus because our verfy updates more than just status
 const (
 	Current LicenseStatus = iota + 1
 	Active
@@ -16,7 +17,7 @@ const (
 type LicenseRepository interface {
 	Store(lic *License) error
 	Find(id LicenseID) (*License, error)
-	Update(id LicenseID, status LicenseStatus) (*License, error)
+	FindAll() ([]*License, error)
 }
 
 type LicenseType struct {
