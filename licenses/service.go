@@ -16,7 +16,7 @@ import (
 type Service interface {
 	StoreLicense(lic repository.License) (repository.License, error)
 	UpdateLicense(lic repository.License) error
-	VerfifyLicense(lic repository.License) error
+	VerifyLicense(lic repository.License) error
 }
 
 type service struct {

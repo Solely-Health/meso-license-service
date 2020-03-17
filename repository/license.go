@@ -17,7 +17,7 @@ const (
 type LicenseRepository interface {
 	Store(lic *License) error
 	Find(id LicenseID) (*License, error)
-	FindAll() ([]*License, error)
+	FindAll() []*License
 }
 
 type LicenseType struct {
