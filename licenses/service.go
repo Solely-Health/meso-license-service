@@ -142,6 +142,7 @@ func verifyCollectedText(s string, license repository.License) (repository.Licen
 			license.Verify = true
 			extractedResult := strings.Split(result[0], ":")
 			license.Status = extractedResult[len(extractedResult)-1]
+			license.Status = strings.Trim(license.Status, " ")
 			license.Expiration = expirationDate(s)
 			log.Println("Verified license: " + strconv.Itoa(license.Number))
 			return license, nil
