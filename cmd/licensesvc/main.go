@@ -42,6 +42,7 @@ func licenseRequest(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	var newLicense repo.License
+	var verifiedLicense repo.License
 	if err != nil {
 		fmt.Fprintf(w, "Error reading body")
 	}
@@ -49,13 +50,13 @@ func licenseRequest(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 	}
 	if licenseSVC != nil {
-		licenseSVC.StoreLicense(newLicense)
-		log.Println(newLicense)
-	} else {
 		log.Println("err:licenseSVC nil")
 	}
-	licenseSVC.UpdateLicense(newLicense)
-
+	verifiedLicense, err = licenseSVC.VerifyLicense(newLicense)
+	if err != nil {
+		log.Print(err)
+	}
+	licenseSVC.UpdateLicense(verifiedLicense)
 	//return struct back as json
 	// w.Header().Set("Content-Type", "application/json")
 	// w.WriteHeader(http.StatusCreated)

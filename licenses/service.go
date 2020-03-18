@@ -2,6 +2,7 @@ package licenses
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -34,13 +35,16 @@ func (s *service) UpdateLicense(lic repository.License) error {
 	return nil
 }
 
-func (s *service) VerifyLicense(lic repository.License) error {
-	createDcaPost(lic)
-	return nil
+func (s *service) VerifyLicense(lic repository.License) (repository.License, error) {
+	license, err := createDcaPost(lic)
+	if err != nil {
+		return license, fmt.Errorf("Failed to Verify: %v", err)
+	}
+	return license, nil
 }
 
 //post to department of consumer affairs website
-func createDcaPost(license repository.License) {
+func createDcaPost(license repository.License) (repository.License, error) {
 	//payload := strings.NewReader("boardCode=0&licenseType=224&firstName=RUBY&lastName=ABRANTES&licenseNumber=633681")
 
 	url := "https://search.dca.ca.gov/results"
@@ -57,44 +61,43 @@ func createDcaPost(license repository.License) {
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, payload)
 	if err != nil {
-		log.Print("createDcaPost reading request:")
-		log.Println(err)
+		return license, fmt.Errorf("createDcaPost reading request: %v", err)
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	res, err := client.Do(req)
 	if err != nil {
-		log.Print("createDcaPost:")
-		log.Println(err)
+		return license, fmt.Errorf("createDcaPost: %v", err)
 	}
 	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		log.Print("createDcaPost:")
-		log.Println(err)
+		return license, fmt.Errorf("createDcaPost: %v", err)
 	}
 
 	//takes string of html. parses to nodes. (basically makes a tree of tags)
 	parseMe, err := html.Parse(strings.NewReader(string(body)))
-	htmlNodeTraversal(parseMe, license)
+	collectedText := ""
+	htmlNodeTraversal(parseMe, collectedText)
+	license, err = verifyCollectedText(collectedText, license)
 	if err != nil {
-		log.Fatal(err)
+		return license, err
 	}
+	return license, nil
 }
 
 //Finds tag we need and collects into text
-func htmlNodeTraversal(n *html.Node, license repository.License) {
+func htmlNodeTraversal(n *html.Node, collectedText string) {
 	if n.Type == html.ElementNode && n.Data == "ul" {
 		for _, a := range n.Attr {
 			if a.Key == "class" && a.Val == "actions" {
 				text := &bytes.Buffer{}
 				collectionBuffer := collectText(n, text)
-				collectedText := collectionBuffer.String()
-				verifyCollectedText(collectedText, license)
+				collectedText = collectionBuffer.String()
 			}
 		}
 	}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		htmlNodeTraversal(c, license)
+		htmlNodeTraversal(c, collectedText)
 	}
 }
 
@@ -109,7 +112,7 @@ func collectText(n *html.Node, buf *bytes.Buffer) *bytes.Buffer {
 	return buf
 }
 
-func verifyCollectedText(s string, license repository.License) {
+func verifyCollectedText(s string, license repository.License) (repository.License, error) {
 	//we would need to pass this for user specific data
 	/*
 		name := "LASTNAME, FIRSTNAME"
@@ -139,11 +142,13 @@ func verifyCollectedText(s string, license repository.License) {
 			license.Status = extractedResult[len(extractedResult)-1]
 			license.Expiration = expirationDate(s)
 			log.Println("Verified license: " + strconv.Itoa(license.Number))
+			return license, nil
 		}
 	} else {
 		license.Verify = false
-		log.Println("verifyCollectedText: license requested has no match")
+		return license, fmt.Errorf("No Match")
 	}
+	return license, fmt.Errorf("No Match")
 }
 
 //Helper function for creating regex expressions
