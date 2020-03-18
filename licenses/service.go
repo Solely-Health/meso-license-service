@@ -17,7 +17,7 @@ import (
 type Service interface {
 	StoreLicense(lic repository.License) (repository.License, error)
 	UpdateLicense(lic repository.License) error
-	VerifyLicense(lic repository.License) error
+	VerifyLicense(lic repository.License) (repository.License, error)
 }
 
 type service struct {
@@ -77,7 +77,10 @@ func createDcaPost(license repository.License) (repository.License, error) {
 	//takes string of html. parses to nodes. (basically makes a tree of tags)
 	parseMe, err := html.Parse(strings.NewReader(string(body)))
 	collectedText := ""
-	htmlNodeTraversal(parseMe, collectedText)
+	htmlNodeTraversal(parseMe, &collectedText)
+	if collectedText == "" {
+		return license, fmt.Errorf("err:Bad html")
+	}
 	license, err = verifyCollectedText(collectedText, license)
 	if err != nil {
 		return license, err
@@ -86,13 +89,13 @@ func createDcaPost(license repository.License) (repository.License, error) {
 }
 
 //Finds tag we need and collects into text
-func htmlNodeTraversal(n *html.Node, collectedText string) {
+func htmlNodeTraversal(n *html.Node, collectedText *string) {
 	if n.Type == html.ElementNode && n.Data == "ul" {
 		for _, a := range n.Attr {
 			if a.Key == "class" && a.Val == "actions" {
 				text := &bytes.Buffer{}
 				collectionBuffer := collectText(n, text)
-				collectedText = collectionBuffer.String()
+				*collectedText = collectionBuffer.String()
 			}
 		}
 	}
@@ -127,7 +130,6 @@ func verifyCollectedText(s string, license repository.License) (repository.Licen
 
 	matchExpression := name + "+\\s+License Number:+\\s+" + number + "+\\s+License Type:+\\s+" + licenseType
 	//expression: return true if string matches FirstName LastName + License Name and Type + License Status
-
 	match := expressionToRegex(matchExpression).MatchString(s)
 	if match == true {
 		newExpression := "[\n\r].*License Status:\\s*([^\n\r]*)"
@@ -135,7 +137,7 @@ func verifyCollectedText(s string, license repository.License) (repository.Licen
 
 		result := expressionToRegex(newExpression).FindAllString(s, 1)
 		if result == nil {
-			log.Printf("verifyCollectedText: regex check nil")
+			return license, fmt.Errorf("Regex Status match nil")
 		} else {
 			license.Verify = true
 			extractedResult := strings.Split(result[0], ":")
@@ -148,7 +150,7 @@ func verifyCollectedText(s string, license repository.License) (repository.Licen
 		license.Verify = false
 		return license, fmt.Errorf("No Match")
 	}
-	return license, fmt.Errorf("No Match")
+	return license, fmt.Errorf("regex error")
 }
 
 //Helper function for creating regex expressions

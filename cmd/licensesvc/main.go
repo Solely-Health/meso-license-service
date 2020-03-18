@@ -49,7 +49,7 @@ func licenseRequest(w http.ResponseWriter, r *http.Request) {
 	if err := json.Unmarshal(body, &newLicense); err != nil {
 		log.Println(err)
 	}
-	if licenseSVC != nil {
+	if licenseSVC == nil {
 		log.Println("err:licenseSVC nil")
 	}
 	verifiedLicense, err = licenseSVC.VerifyLicense(newLicense)
