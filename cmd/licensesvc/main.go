@@ -7,7 +7,7 @@ import (
 	inmem "github.com/meso-org/meso-license-service/inmemorydb"
 	"github.com/meso-org/meso-license-service/licenses"
 	repo "github.com/meso-org/meso-license-service/repository"
-	server "github.com/meso-org/meso/server"
+	server "github.com/meso-org/meso-license-service/server"
 )
 
 var licenseSVC licenses.Service
