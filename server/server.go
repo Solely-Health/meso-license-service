@@ -14,9 +14,9 @@ type Server struct {
 	router      chi.Router
 }
 
-func New(ws licenses.Service) *Server {
+func New(ls licenses.Service) *Server {
 	s := &Server{
-		LicensesSVC: ws,
+		LicensesSVC: ls,
 	}
 
 	r := chi.NewRouter()
@@ -32,10 +32,6 @@ func New(ws licenses.Service) *Server {
 	s.router = r
 
 	return s
-}
-
-func NewServer() *Server {
-	s := &Server{}
 }
 
 func accessControl(h http.Handler) http.Handler {
