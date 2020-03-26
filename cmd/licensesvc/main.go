@@ -10,8 +10,6 @@ import (
 	server "github.com/meso-org/meso-license-service/server"
 )
 
-var licenseSVC licenses.Service
-
 func main() {
 	var (
 		inmemorydb = true
@@ -24,7 +22,10 @@ func main() {
 	} else {
 		//other db
 	}
-	licenseSVC = licenses.NewService(licenseRepository)
+
+	var licensesSVC licenses.Service
+	licensesSVC = licenses.NewService(licenseRepository)
+
 	srv := server.New(licensesSVC)
 	fmt.Println("about to start License server")
 	http.ListenAndServe(":6060", srv)
