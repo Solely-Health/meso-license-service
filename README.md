@@ -1,5 +1,5 @@
 # meso-license-service
-licence verfication service
+Licence Verfication Service
 
 ## JSON POST request Example 
 ```JSON

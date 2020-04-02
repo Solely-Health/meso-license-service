@@ -6,14 +6,36 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi"
+	"github.com/meso-org/meso-license-service/licenses"
 )
 
 type Server struct {
-	router chi.Router
+	LicensesSVC licenses.Service
+	router      chi.Router
 }
 
-func NewServer() *Server {
-	s := &Server{}
+func New(ls licenses.Service) *Server {
+	s := &Server{
+		LicensesSVC: ls,
+	}
+
+	r := chi.NewRouter()
+
+	r.Use(accessControl)
+
+	// Register worker module related endpoints
+	r.Route("/license", func(r chi.Router) {
+		h := licenseHandler{s.LicensesSVC}
+		r.Mount("/v1", h.router())
+	})
+
+	s.router = r
+
+	return s
+}
+
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.router.ServeHTTP(w, r)
 }
 
 func accessControl(h http.Handler) http.Handler {

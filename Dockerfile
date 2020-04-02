@@ -1,4 +1,5 @@
 FROM golang:alpine AS builder
+RUN apk update && apk add --no-cache git ca-certificates && update-ca-certificates
 
 # Set necessary environmet variables needed for our image
 ENV GO111MODULE=on \
@@ -34,8 +35,8 @@ RUN cp /build/main .
 ############################
 FROM scratch
 
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /dist/main /
-
 # Command to run the executable
 ENTRYPOINT ["/main"]
 
